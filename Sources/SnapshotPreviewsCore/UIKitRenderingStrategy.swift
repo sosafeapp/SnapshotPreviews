@@ -42,7 +42,12 @@ public class UIKitRenderingStrategy: RenderingStrategy {
       Self.setup()
       geometryUpdateError = nil
       let targetOrientation = preview.orientation.toInterfaceOrientation()
-      guard #available(iOS 16.0, *), windowScene!.interfaceOrientation != targetOrientation else {
+      // iOS 18 / iOS 26.3 XCTest host: windowScene.interfaceOrientation
+      // returns .unknown and requestGeometryUpdate fails with UISceneError 101.
+      // Skip rotation in that case — the window is already portrait-sized.
+      guard #available(iOS 16.0, *),
+            windowScene!.interfaceOrientation != .unknown,
+            windowScene!.interfaceOrientation != targetOrientation else {
           performRender(preview: preview, completion: completion)
           return
       }
