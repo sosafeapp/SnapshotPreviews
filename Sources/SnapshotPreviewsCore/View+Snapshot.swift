@@ -180,15 +180,26 @@ extension CGSize {
 
 extension UIView {
   func render(size: CGSize, mode: EmergeRenderingMode?, context: CGContext) -> Bool {
+    // iOS 18 / iOS 26.3 XCTest host: drawHierarchy returns false because the
+    // UIWindow isn't connected to a foreground-active scene. Fall back to
+    // CALayer.render(in:) so snapshots still come out.
     switch mode {
     case .coreAnimation:
       layer.layerForSnapshot.render(in: context)
       return true
     case .uiView:
-      return drawHierarchy(in: CGRect(origin: .zero, size: size), afterScreenUpdates: true)
+      if drawHierarchy(in: CGRect(origin: .zero, size: size), afterScreenUpdates: true) {
+        return true
+      }
+      layer.layerForSnapshot.render(in: context)
+      return true
     case .window, .none:
       if !size.requiresCoreAnimationSnapshot {
-        return drawHierarchy(in: CGRect(origin: .zero, size: size), afterScreenUpdates: true)
+        if drawHierarchy(in: CGRect(origin: .zero, size: size), afterScreenUpdates: true) {
+          return true
+        }
+        layer.layerForSnapshot.render(in: context)
+        return true
       } else {
         layer.layerForSnapshot.render(in: context)
         return true
