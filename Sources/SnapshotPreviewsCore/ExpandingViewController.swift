@@ -17,8 +17,16 @@ import SnapshotSharedModels
 public final class ExpandingViewController: UIHostingController<EmergeModifierView>, ScrollExpansionProviding {
 
   var supportsExpansion: Bool {
-    rootView.supportsExpansion
+    // A .fixed layout is rendered at exactly the size the preview asked for, so growing
+    // the scroll view cannot change the output image — it only spins the layout loop
+    // until the timer fires, and diverges outright when the preview's root derives its
+    // children's sizes from the proposed height. updateHeight's own comment already
+    // assumes this ("if heightAnchor isn't set, this was a fixed size"), but setupView
+    // sets heightAnchor for .fixed too, so that guard never fires.
+    !isFixedLayout && rootView.supportsExpansion
   }
+
+  private var isFixedLayout = false
 
   private let HeightExpansionTimeLimitInSeconds: UInt64 = 30
 
@@ -61,11 +69,13 @@ public final class ExpandingViewController: UIHostingController<EmergeModifierVi
     removeConstraints()
     switch layout {
     case let .fixed(width: width, height: height):
+      isFixedLayout = true
       widthAnchor = view.widthAnchor.constraint(equalToConstant: width)
       widthAnchor?.isActive = true
       heightAnchor = view.heightAnchor.constraint(equalToConstant: height)
       heightAnchor?.isActive = true
     default:
+      isFixedLayout = false
       let fittingSize = sizeThatFits(in: UIScreen.main.bounds.size)
       widthAnchor = view.widthAnchor.constraint(greaterThanOrEqualToConstant: fittingSize.width)
       widthAnchor?.isActive = true
